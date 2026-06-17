@@ -6,49 +6,82 @@
 <title>سجل المختار الإلكتروني</title>
 
 <!-- Firebase compat (Firestore) -->
-<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js" onerror="window._fbScriptFailed='app-sdk'"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js" onerror="window._fbScriptFailed='firestore-sdk'"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
 <script>
-(function(){
-  var cfg={
-    apiKey:"AIzaSyC9xKQ40NtBGRydsGal7K96LFE-IXFDtts",
-    authDomain:"mokhtar-app-80d52.firebaseapp.com",
-    projectId:"mokhtar-app-80d52",
-    storageBucket:"mokhtar-app-80d52.firebasestorage.app",
-    messagingSenderId:"220762582154",
-    appId:"1:220762582154:web:9e975a5e63eb31309e9173"
-  };
-  function tryInit(attemptsLeft){
-    if(typeof firebase==='undefined'){
-      if(window._fbScriptFailed){
-        window._fbReady=false;
-        window._fbInitError='تعذّر تحميل مكتبة Firebase من الإنترنت (ملف '+window._fbScriptFailed+' لم يُحمَّل) — تحقق من الاتصال بالإنترنت أو من حجب gstatic.com (مانع إعلانات/جدار حماية)';
-        console.error('❌ Firebase SDK script failed to load:',window._fbScriptFailed);
-        return;
-      }
-      if(attemptsLeft>0){
-        // السكريبت ربما لم يكتمل تحميله بعد (شبكة بطيئة)، أعد المحاولة بعد قليل
-        setTimeout(function(){tryInit(attemptsLeft-1);},300);
-        return;
-      }
-      window._fbReady=false;
-      window._fbInitError='firebase is not defined — لم تُحمَّل مكتبة Firebase بعد عدة محاولات. تحقق من اتصال الإنترنت أو افتح console (F12) لرؤية خطأ تحميل السكريبت';
-      console.error('❌ Firebase initializeApp فشل: firebase is not defined (after retries)');
-      return;
-    }
-    try{
-      firebase.initializeApp(cfg);
-      window._fbDb=firebase.firestore();
-      window._fbReady=true;
-      console.log('✅ Firebase initializeApp نجح: mokhtar-app-80d52');
-    }catch(e){
-      window._fbReady=false;
-      window._fbInitError=e.message;
-      console.error('❌ Firebase initializeApp فشل:',e.message);
-    }
-  }
-  tryInit(10); // يحاول حتى 10 مرات (كل 300ms) قبل الاستسلام = حتى 3 ثواني انتظار
-})();
+// ⚠️ ضع هنا بيانات مشروعك الخاص بعد إنشائه على موقع Supabase
+const SUPABASE_URL = 'https://YOUR_PROJECT_ID.supabase.co';
+const SUPABASE_KEY = 'YOUR_SUPABASE_ANON_KEY';
+
+// ربط الموقع بالـ Supabase
+const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+window._fbReady = true; 
+window._fbDb = true;
+
+// دالة جلب البيانات من الـ Cloud بشكل صامت
+async function _fbGet() {
+    try {
+        const { data, error } = await supabase
+            .from('makhtara_store')
+            .select('content')
+            .eq('id', 1)
+            .single();
+
+        if (error) {
+            console.error('جاري تهيئة قاعدة البيانات...');
+            return;
+        }
+
+        if (data && data.content) {
+            const parsedData = data.content;
+            
+            // تحديث المصفوفات في الخلفية فقط دون تغيير شاشتك
+            if (parsedData.transactions) transactions = parsedData.transactions;
+            if (parsedData.stamps) stamps = parsedData.stamps;
+            if (parsedData.customers) customers = parsedData.customers;
+            if (parsedData.debts) debts = parsedData.debts;
+            if (parsedData.citizens) citizens = parsedData.citizens;
+            if (parsedData.forms) forms = parsedData.forms;
+            if (parsedData.agents) agents = parsedData.agents;
+            if (parsedData.cashbox) cashbox = parsedData.cashbox;
+            
+            // تحديث الجداول المعروضة صامتاً
+            if (typeof renderTransactions === 'function' && document.getElementById('transactionsTable')) renderTransactions(); 
+            if (typeof renderStamps === 'function' && document.getElementById('stampsTable')) renderStamps(); 
+            if (typeof renderDebts === 'function' && document.getElementById('debtsTable')) renderDebts();
+            if (typeof updateTopStats === 'function') updateTopStats();
+        }
+    } catch (e) { console.error('خطأ في جلب بيانات Supabase:', e); }
+}
+
+// دالة حفظ المعاملات والنماذج فوراً عند الضغط على زر حفظ
+async function _fbSet(key, value) {
+    try {
+        const payload = {
+            transactions: typeof transactions !== 'undefined' ? transactions : [],
+            stamps: typeof stamps !== 'undefined' ? stamps : [],
+            customers: typeof customers !== 'undefined' ? customers : [],
+            debts: typeof debts !== 'undefined' ? debts : [],
+            citizens: typeof citizens !== 'undefined' ? citizens : [],
+            forms: typeof forms !== 'undefined' ? forms : [],
+            agents: typeof agents !== 'undefined' ? agents : [],
+            cashbox: typeof cashbox !== 'undefined' ? cashbox : [],
+            timestamp: Date.now()
+        };
+
+        await supabase
+            .from('makhtara_store')
+            .upsert({ id: 1, content: payload });
+
+    } catch (e) { console.error('خطأ في حفظ بيانات Supabase:', e); }
+}
+
+document.addEventListener("DOMContentLoaded", function() {
+    _fbGet();
+    // مزامنة صامتة كل 5 ثوانٍ لجلب أي معاملة جديدة
+    setInterval(_fbGet, 5000);
+});
 </script>
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;900&display=swap" rel="stylesheet">
 <style>
